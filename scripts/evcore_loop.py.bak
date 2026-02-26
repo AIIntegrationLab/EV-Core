@@ -1,0 +1,71 @@
+import requests
+import json
+import subprocess
+
+from evcore_contract import SYSTEM
+from evcore_parse import extract_json
+from evcore_validate import normalise, fallback
+from evcore_router import route
+from tools_time import maybe_handle_time_query
+
+LLM_URL = "http://127.0.0.1:8088/v1/chat/completions"
+SPEAK_SCRIPT = "/home/evcore1/evcore/scripts/llm_speak_stream.py"
+
+def decide(user_text):
+    payload = {
+        "model": "local",
+        "messages": [
+            {"role": "system", "content": SYSTEM.strip()},
+            {"role": "user", "content": user_text}
+        ],
+        "temperature": 0.0,
+    }
+
+    r = requests.post(LLM_URL, json=payload, timeout=60)
+    r.raise_for_status()
+
+    text = r.json()["choices"][0]["message"]["content"]
+    print("RAW>", repr(text))
+
+    d = extract_json(text)
+    d = normalise(d)
+    return d
+
+def speak(text):
+    print(f"EV> {text}")
+
+if __name__ == "__main__":
+    try:
+        while True:
+            user_text = input("\nYou> ").strip()
+            if not user_text:
+                continue
+
+            # Local tool routing (bypass LLM)
+            tool_reply = maybe_handle_time_query(user_text)
+            if tool_reply:
+                print('Decision>', {'intent':'tool_time','reply': tool_reply,'should_speak': True,'should_listen': True,'interruptible': True,'actions':[{'type':'none','value':''}]})
+                speak(tool_reply)
+                continue
+
+            # User-controlled exit only
+            if user_text.lower() in ("exit", "quit", "bye"):
+                print("EV> Bye.")
+                break
+
+            routed = route(user_text)
+            if routed is not None:
+                d = routed
+            else:
+                d = decide(user_text)
+            print("Decision>", d)
+
+            if d.get("should_speak"):
+                speak(d.get("reply", ""))
+
+            # Never let the model end the loop
+            # Only the user can exit
+            pass
+
+    except KeyboardInterrupt:
+        print("\nEV> Bye.")

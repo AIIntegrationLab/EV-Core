@@ -1,0 +1,18 @@
+# External repos / big folders we don't want in EV Core git
+llama.cpp/
+models/
+logs/
+scripts_backup_*/
+
+# Agent system folders
+agents/.venv/
+agents/runs/
+agents/.env
+runs/
+
+# Python junk
+__pycache__/
+*.pyc
+
+# OS/editor
+.DS_Store
