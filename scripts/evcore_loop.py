@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+import uuid
+from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List
 import requests
 
@@ -8,6 +12,23 @@ from evcore_contract import SYSTEM
 from evcore_parse import extract_json
 from evcore_memory import get_memory_context, clear_memory
 from evcore_clarify import clear_pending
+
+# ------------------------------
+# Logging Setup
+# ------------------------------
+RUN_ID = os.environ.get("EVCORE_RUN_ID")
+if not RUN_ID:
+    _ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    _suid = str(uuid.uuid4())[:8]
+    RUN_ID = f"{_ts}-{_suid}"
+
+LOG_DIR = Path.home() / "evcore" / "logs" / "runs" / RUN_ID
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "evcore_loop.log"
+
+def _log(msg: str) -> None:
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(msg + "\n")
 
 # ------------------------------
 # Configuration
@@ -56,17 +77,52 @@ def debug_print_decision(user_text: str, d: dict, src: str) -> None:
     if not action_lines:
         action_lines = ["  - (none)"]
 
+    # Console output (unchanged)
     print("\n[EV DEBUG]")
-    print(f"  user:   {_short(user_text, 120)}")
-    print(f"  route:  {src}")
-    print(f"  intent: {intent}")
-    print(f"  flags:  speak={should_speak} listen={should_listen} interruptible={interruptible} set_mode={set_mode}")
-    print(f"  reply:  {_short(reply, 180)}")
+
+    # Log output (cleaner: mirror the same visible lines)
+    _log("")          # mirrors the leading blank line from print("\n...")
+    _log("[EV DEBUG]")
+
+    l_user = f"  user:   {_short(user_text, 120)}"
+    print(l_user)
+    _log(l_user)
+
+    l_route = f"  route:  {src}"
+    print(l_route)
+    _log(l_route)
+
+    l_intent = f"  intent: {intent}"
+    print(l_intent)
+    _log(l_intent)
+
+    l_flags = (
+        f"  flags:  speak={should_speak} "
+        f"listen={should_listen} "
+        f"interruptible={interruptible} "
+        f"set_mode={set_mode}"
+    )
+    print(l_flags)
+    _log(l_flags)
+
+    l_reply = f"  reply:  {_short(reply, 180)}"
+    print(l_reply)
+    _log(l_reply)
+
     print("  actions:")
-    print(f"  action_count: {len(actions) if isinstance(actions, list) else 'n/a'}")
+    _log("  actions:")
+
+    l_count = f"  action_count: {len(actions) if isinstance(actions, list) else 'n/a'}"
+    print(l_count)
+    _log(l_count)
+
     for line in action_lines:
         print(line)
+        _log(line)
+
     print("[/EV DEBUG]\n")
+    _log("[/EV DEBUG]")
+    _log("")          # mirrors the trailing blank line from print("...\\n")
 
 
 def _is_creative_prompt(t: str) -> bool:
@@ -149,7 +205,9 @@ def decide(user_text: str) -> Dict[str, Any]:
 
 
 def speak(text: str) -> None:
-    print(f"EV> {text}")
+    msg = f"EV> {text}"
+    print(msg)
+    _log(msg)
 
 
 def _is_exit(t: str) -> bool:
@@ -163,9 +221,12 @@ if __name__ == "__main__":
             user_text = input("\nYou> ").strip()
             if not user_text:
                 continue
+            
+            _log(f"YOU> {user_text}")
 
             if _is_exit(user_text):
                 speak("Bye.")
+                _log("Exit: user requested exit.")
                 break
 
             # Local commands (loop-only)
@@ -204,4 +265,8 @@ if __name__ == "__main__":
             remember_turn(user_text, reply)
 
     except KeyboardInterrupt:
-        print("\nEV> Bye.")
+        msg = "\nEV> Bye."
+        print(msg)
+        _log(msg)
+        _log("Exit: keyboard interrupt.")
+
