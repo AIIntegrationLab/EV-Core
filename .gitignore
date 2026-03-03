@@ -17,3 +17,7 @@ __pycache__/
 # OS/editor
 .DS_Store
 agents/
+
+# Root venvs
+.venv/
+venv/
