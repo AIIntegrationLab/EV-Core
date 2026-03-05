@@ -247,7 +247,7 @@ if __name__ == "__main__":
                 continue
 
             if user_text.lower() == "/status":
-                speak(f"Mode={mode}, memory_turns={len(history)//2}.")
+                speak(f"Status: Mode={mode}, memory_turns={len(history)//2}.")
                 continue
 
             # One pipeline call
