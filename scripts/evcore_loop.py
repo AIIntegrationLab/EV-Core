@@ -243,7 +243,7 @@ if __name__ == "__main__":
                 history.clear()
                 clear_memory()
                 clear_pending()
-                speak("Memory cleared.")
+                speak("Reset: Memory cleared.")
                 continue
 
             if user_text.lower() == "/status":
